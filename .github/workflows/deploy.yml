@@ -1,0 +1,25 @@
+name: CI Pipeline
+ 
+on:
+  push:
+    branches: [ "main" ]
+ 
+jobs:
+  python-check:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+ 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+ 
+      - name: Install dependencies
+        run: pip install pandas matplotlib seaborn
+ 
+      - name: Run data analysis (Task 1)
+        working-directory: task1_analysis
+        run: python data_analysis.py
