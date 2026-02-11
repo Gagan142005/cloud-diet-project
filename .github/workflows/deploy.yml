@@ -23,3 +23,13 @@ jobs:
       - name: Run data analysis (Task 1)
         working-directory: task1_analysis
         run: python data_analysis.py
+
+docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+ 
+      - name: Build Docker image (Task 2)
+        working-directory: task2_docker
+        run: docker build -t diet-analysis .
