@@ -2,14 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Nutritional Insights</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <h1>Nutritional Insights</h1>
+    <div class="topbar-content">
+      <h1>Nutritional Insights</h1>
+      <div class="user-box">
+        <span id="loggedInUser">Guest User</span>
+        <button id="logoutBtn" class="btn btn-purple">Logout</button>
+      </div>
+    </div>
   </header>
 
   <main class="container">
@@ -20,47 +26,33 @@
         <div class="chart-card">
           <h3>Bar Chart</h3>
           <p>Average macronutrient content by diet type.</p>
-          <div class="chart-box">
-            <canvas id="barChart"></canvas>
-          </div>
+          <div class="chart-box"><canvas id="barChart"></canvas></div>
         </div>
 
         <div class="chart-card">
           <h3>Scatter Plot</h3>
           <p>Nutrient relationships (e.g., protein vs carbs).</p>
-          <div class="chart-box">
-            <canvas id="scatterChart"></canvas>
-          </div>
+          <div class="chart-box"><canvas id="scatterChart"></canvas></div>
         </div>
 
         <div class="chart-card">
           <h3>Heatmap</h3>
           <p>Nutrient correlations.</p>
-          <div class="chart-box">
-            <canvas id="heatmapChart"></canvas>
-          </div>
+          <div class="chart-box"><canvas id="heatmapChart"></canvas></div>
         </div>
 
         <div class="chart-card">
           <h3>Pie Chart</h3>
           <p>Recipe distribution by diet type.</p>
-          <div class="chart-box">
-            <canvas id="pieChart"></canvas>
-          </div>
+          <div class="chart-box"><canvas id="pieChart"></canvas></div>
         </div>
       </div>
     </section>
 
     <section class="filters-section">
       <h2 class="section-title">Filters and Data Interaction</h2>
-
       <div class="filters-row">
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="Search by Diet Type"
-        />
-
+        <input id="searchInput" type="text" placeholder="Search by Diet Type" />
         <select id="dietFilter">
           <option value="all">All Diet Types</option>
         </select>
@@ -69,7 +61,6 @@
 
     <section class="api-section">
       <h2 class="section-title">API Data Interaction</h2>
-
       <div class="button-row">
         <button id="getInsightsBtn" class="btn btn-blue">Get Nutritional Insights</button>
         <button id="getRecipesBtn" class="btn btn-green">Get Recipes</button>
@@ -83,9 +74,32 @@
       </div>
     </section>
 
+    <section>
+      <h2 class="section-title">Security & Compliance</h2>
+      <div class="meta-box">
+        <p><strong>Security Status</strong></p>
+        <p>Encryption: <span class="status-green">Enabled</span></p>
+        <p>Access Control: <span class="status-green">Secure</span></p>
+        <p>Compliance: <span class="status-green">GDPR Compliant</span></p>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">OAuth & 2FA Integration</h2>
+      <div class="meta-box">
+        <p><strong>Secure Login</strong></p>
+        <div class="button-row oauth-row">
+          <button id="googleLoginBtn" class="btn btn-blue">Login with Google</button>
+          <button id="githubLoginBtn" class="btn btn-blue">Login with GitHub</button>
+        </div>
+
+        <label class="input-label" for="twoFactorCode">Enter 2FA Code</label>
+        <input id="twoFactorCode" class="full-input" type="text" placeholder="Enter your 2FA code" />
+      </div>
+    </section>
+
     <section class="pagination-section">
       <h2 class="section-title">Pagination</h2>
-
       <div class="pagination">
         <button id="prevPage" class="page-btn">Previous</button>
         <button class="page-number active">1</button>
@@ -111,6 +125,28 @@
       </div>
     </section>
   </main>
+
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-modal">
+      <h2>Login / Register</h2>
+
+      <input id="nameInput" class="full-input mb-14" type="text" placeholder="Enter your name (for register)" />
+      <input id="emailInput" class="full-input mb-14" type="email" placeholder="Enter your email" />
+      <input id="passwordInput" class="full-input mb-14" type="password" placeholder="Enter your password" />
+
+      <div class="button-row auth-row">
+        <button id="registerBtn" class="btn btn-blue">Register</button>
+        <button id="loginBtn" class="btn btn-green">Login</button>
+      </div>
+
+      <div class="button-row auth-row">
+        <button id="googleLoginBtnModal" class="btn btn-blue">Login with Google</button>
+        <button id="githubLoginBtnModal" class="btn btn-purple">Login with GitHub</button>
+      </div>
+
+      <p id="authMessage" class="auth-message"></p>
+    </div>
+  </div>
 
   <footer class="footer">
     © 2025 Nutritional Insights. All Rights Reserved.

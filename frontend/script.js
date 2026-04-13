@@ -1,309 +1,378 @@
-const API_URL =
-  "https://diet-analysis-func01-d7fdd4awc3dacqew.canadacentral-01.azurewebsites.net/api/nutrition";
+const RECIPES_API = "http://localhost:7071/api/recipes";
+const NUTRITION_API = "http://localhost:7071/api/nutrition";
+const REGISTER_API = "http://localhost:7071/api/register";
+const LOGIN_API = "http://localhost:7071/api/login";
 
-const getInsightsBtn = document.getElementById("getInsightsBtn");
-const getRecipesBtn = document.getElementById("getRecipesBtn");
-const getClustersBtn = document.getElementById("getClustersBtn");
-
-const searchInput = document.getElementById("searchInput");
-const dietFilter = document.getElementById("dietFilter");
-
-const executionTime = document.getElementById("executionTime");
-const blobName = document.getElementById("blobName");
-const statusText = document.getElementById("statusText");
-const tableBody = document.getElementById("tableBody");
-
-const prevPageBtn = document.getElementById("prevPage");
-const nextPageBtn = document.getElementById("nextPage");
-const pageButtons = document.querySelectorAll(".page-number");
-
-let allData = [];
-let filteredData = [];
 let currentPage = 1;
-const rowsPerPage = 2;
+const pageSize = 2;
+let currentDiet = "all";
+let currentSearch = "";
+let totalPages = 1;
 
-let barChartInstance = null;
-let scatterChartInstance = null;
-let heatmapChartInstance = null;
-let pieChartInstance = null;
+let barChart = null;
+let scatterChart = null;
+let heatmapChart = null;
+let pieChart = null;
 
-async function fetchInsights() {
-  try {
-    statusText.textContent = "Loading...";
+document.addEventListener("DOMContentLoaded", () => {
+  const nameInput = document.getElementById("nameInput");
+  const emailInput = document.getElementById("emailInput");
+  const passwordInput = document.getElementById("passwordInput");
 
-    const response = await fetch(API_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
-    }
+  const registerBtn = document.getElementById("registerBtn");
+  const loginBtn = document.getElementById("loginBtn");
+  const googleLoginBtnModal = document.getElementById("googleLoginBtnModal");
+  const githubLoginBtnModal = document.getElementById("githubLoginBtnModal");
+  const logoutBtn = document.getElementById("logoutBtn");
 
-    const result = await response.json();
+  const authMessage = document.getElementById("authMessage");
+  const loggedInUser = document.getElementById("loggedInUser");
 
-    allData = result.data || [];
-    executionTime.textContent = `${result.execution_time_seconds ?? "N/A"} seconds`;
-    blobName.textContent = result.blob || "Unknown";
-    statusText.textContent = "Loaded successfully";
+  const searchInput = document.getElementById("searchInput");
+  const dietFilter = document.getElementById("dietFilter");
+  const getInsightsBtn = document.getElementById("getInsightsBtn");
+  const getRecipesBtn = document.getElementById("getRecipesBtn");
+  const getClustersBtn = document.getElementById("getClustersBtn");
 
-    populateFilter(allData);
-    currentPage = 1;
-    applyFilters();
-  } catch (error) {
-    statusText.textContent = `Error: ${error.message}`;
-    console.error(error);
-  }
-}
+  const executionTime = document.getElementById("executionTime");
+  const blobName = document.getElementById("blobName");
+  const statusText = document.getElementById("statusText");
+  const tableBody = document.getElementById("tableBody");
 
-function populateFilter(data) {
-  const uniqueDiets = [...new Set(data.map(item => item.Diet_type))];
+  const pageBtns = document.querySelectorAll(".page-number");
+  const prevBtn = document.getElementById("prevPage");
+  const nextBtn = document.getElementById("nextPage");
 
-  dietFilter.innerHTML = `<option value="all">All Diet Types</option>`;
-
-  uniqueDiets.forEach(diet => {
-    const option = document.createElement("option");
-    option.value = diet;
-    option.textContent = diet;
-    dietFilter.appendChild(option);
-  });
-}
-
-function applyFilters() {
-  const selectedDiet = dietFilter.value;
-  const searchValue = searchInput.value.trim().toLowerCase();
-
-  filteredData = allData.filter(item => {
-    const matchesDiet = selectedDiet === "all" || item.Diet_type === selectedDiet;
-    const matchesSearch = item.Diet_type.toLowerCase().includes(searchValue);
-    return matchesDiet && matchesSearch;
-  });
-
-  currentPage = 1;
-  renderAll();
-}
-
-function renderAll() {
-  renderTable(filteredData);
-  renderCharts(filteredData);
-  updatePaginationButtons();
-}
-
-function renderTable(data) {
-  tableBody.innerHTML = "";
-
-  if (data.length === 0) {
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="4">No data found.</td>
-      </tr>
-    `;
-    return;
+  function showLoggedOutState() {
+    document.body.classList.remove("logged-in");
+    document.body.classList.add("logged-out");
+    loggedInUser.textContent = "Guest User";
   }
 
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const endIndex = startIndex + rowsPerPage;
-  const paginatedData = data.slice(startIndex, endIndex);
-
-  paginatedData.forEach(item => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${item.Diet_type}</td>
-      <td>${Number(item["Protein(g)"]).toFixed(2)}</td>
-      <td>${Number(item["Carbs(g)"]).toFixed(2)}</td>
-      <td>${Number(item["Fat(g)"]).toFixed(2)}</td>
-    `;
-    tableBody.appendChild(row);
-  });
-}
-
-function destroyCharts() {
-  if (barChartInstance) barChartInstance.destroy();
-  if (scatterChartInstance) scatterChartInstance.destroy();
-  if (heatmapChartInstance) heatmapChartInstance.destroy();
-  if (pieChartInstance) pieChartInstance.destroy();
-}
-
-function renderCharts(data) {
-  destroyCharts();
-
-  if (data.length === 0) {
-    return;
+  function showLoggedInState(name) {
+    document.body.classList.remove("logged-out");
+    document.body.classList.add("logged-in");
+    loggedInUser.textContent = name || "User";
   }
 
-  const labels = data.map(item => item.Diet_type);
-  const proteinData = data.map(item => Number(item["Protein(g)"]));
-  const carbsData = data.map(item => Number(item["Carbs(g)"]));
-  const fatData = data.map(item => Number(item["Fat(g)"]));
+  function clearAuthForm() {
+    if (nameInput) nameInput.value = "";
+    if (emailInput) emailInput.value = "";
+    if (passwordInput) passwordInput.value = "";
+    if (authMessage) authMessage.textContent = "";
+  }
 
-  const barCtx = document.getElementById("barChart");
-  const scatterCtx = document.getElementById("scatterChart");
-  const heatmapCtx = document.getElementById("heatmapChart");
-  const pieCtx = document.getElementById("pieChart");
+  function populateDietOptions() {
+    const diets = ["all", "dash", "keto", "mediterranean", "paleo", "vegan"];
+    dietFilter.innerHTML = "";
 
-  barChartInstance = new Chart(barCtx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Protein(g)",
-          data: proteinData
-        },
-        {
-          label: "Carbs(g)",
-          data: carbsData
-        },
-        {
-          label: "Fat(g)",
-          data: fatData
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false
-    }
-  });
+    diets.forEach((diet) => {
+      const option = document.createElement("option");
+      option.value = diet;
+      option.textContent = diet === "all" ? "All Diet Types" : diet;
+      dietFilter.appendChild(option);
+    });
+  }
 
-  scatterChartInstance = new Chart(scatterCtx, {
-    type: "scatter",
-    data: {
-      datasets: [
-        {
-          label: "Protein vs Carbs",
-          data: data.map(item => ({
-            x: Number(item["Carbs(g)"]),
-            y: Number(item["Protein(g)"])
-          }))
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: "Carbs(g)"
-          }
-        },
-        y: {
-          title: {
-            display: true,
-            text: "Protein(g)"
-          }
-        }
+  async function loadRecipes() {
+    try {
+      statusText.textContent = "Loading...";
+
+      const url = new URL(RECIPES_API);
+      url.searchParams.set("page", currentPage);
+      url.searchParams.set("page_size", pageSize);
+
+      if (currentDiet !== "all") {
+        url.searchParams.set("diet", currentDiet);
       }
-    }
-  });
 
-  heatmapChartInstance = new Chart(heatmapCtx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Protein(g)",
-          data: proteinData
+      if (currentSearch) {
+        url.searchParams.set("search", currentSearch);
+      }
+
+      const response = await fetch(url);
+      const result = await response.json();
+
+      totalPages = result.total_pages || 1;
+
+      renderTable(result.data || []);
+      updatePagination(result.page || 1, totalPages);
+
+      statusText.textContent = "Loaded successfully";
+      executionTime.textContent = "From recipes API";
+      blobName.textContent = "processed/cleaned_diets.csv";
+    } catch (error) {
+      console.error("Recipes load error:", error);
+      statusText.textContent = "Error loading data";
+    }
+  }
+
+  async function loadCharts() {
+    try {
+      const response = await fetch(NUTRITION_API);
+      const result = await response.json();
+      renderCharts(result.data || []);
+    } catch (error) {
+      console.error("Chart load error:", error);
+    }
+  }
+
+  function renderTable(data) {
+    tableBody.innerHTML = "";
+
+    if (!data.length) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="4">No results found</td>
+        </tr>
+      `;
+      return;
+    }
+
+    data.forEach((item) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${item.Diet_type || ""}</td>
+        <td>${item["Protein(g)"] ?? ""}</td>
+        <td>${item["Carbs(g)"] ?? ""}</td>
+        <td>${item["Fat(g)"] ?? ""}</td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
+
+  function updatePagination(page, total) {
+    pageBtns.forEach((btn, index) => {
+      const pageNumber = index + 1;
+      btn.classList.toggle("active", pageNumber === page);
+    });
+
+    if (prevBtn) prevBtn.disabled = page <= 1;
+    if (nextBtn) nextBtn.disabled = page >= total;
+  }
+
+  function destroyCharts() {
+    if (barChart) barChart.destroy();
+    if (scatterChart) scatterChart.destroy();
+    if (heatmapChart) heatmapChart.destroy();
+    if (pieChart) pieChart.destroy();
+  }
+
+  function renderCharts(data) {
+    destroyCharts();
+
+    const labels = data.map((item) => item.Diet_type);
+    const protein = data.map((item) => item["Protein(g)"]);
+    const carbs = data.map((item) => item["Carbs(g)"]);
+    const fat = data.map((item) => item["Fat(g)"]);
+
+    const barCanvas = document.getElementById("barChart");
+    const scatterCanvas = document.getElementById("scatterChart");
+    const heatmapCanvas = document.getElementById("heatmapChart");
+    const pieCanvas = document.getElementById("pieChart");
+
+    if (barCanvas) {
+      barChart = new Chart(barCanvas, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            { label: "Protein(g)", data: protein },
+            { label: "Carbs(g)", data: carbs },
+            { label: "Fat(g)", data: fat }
+          ]
         },
-        {
-          label: "Carbs(g)",
-          data: carbsData
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+    }
+
+    if (scatterCanvas) {
+      scatterChart = new Chart(scatterCanvas, {
+        type: "scatter",
+        data: {
+          datasets: [{
+            label: "Protein vs Carbs",
+            data: data.map((item) => ({
+              x: item["Carbs(g)"],
+              y: item["Protein(g)"]
+            }))
+          }]
         },
-        {
-          label: "Fat(g)",
-          data: fatData
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
         }
-      ]
-    },
-    options: {
-      indexAxis: "y",
-      responsive: true,
-      maintainAspectRatio: false
+      });
     }
-  });
 
-  pieChartInstance = new Chart(pieCtx, {
-    type: "pie",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Fat(g)",
-          data: fatData
+    if (heatmapCanvas) {
+      heatmapChart = new Chart(heatmapCanvas, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Fat(g)",
+            data: fat
+          }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false
         }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false
+      });
+    }
+
+    if (pieCanvas) {
+      pieChart = new Chart(pieCanvas, {
+        type: "pie",
+        data: {
+          labels,
+          datasets: [{
+            data: data.map(() => 1)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+    }
+  }
+
+  registerBtn.addEventListener("click", async () => {
+    const name = nameInput.value.trim();
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!name || !email || !password) {
+      authMessage.textContent = "Please fill all fields.";
+      return;
+    }
+
+    try {
+      const response = await fetch(REGISTER_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name, email, password })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        authMessage.textContent = result.error || "Register failed.";
+        return;
+      }
+
+      authMessage.textContent = result.message || "Registered successfully.";
+      showLoggedInState(name);
+    } catch (error) {
+      console.error("Register error:", error);
+      authMessage.textContent = "Register request failed.";
     }
   });
-}
 
-function updatePaginationButtons() {
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
+  loginBtn.addEventListener("click", async () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
 
-  pageButtons.forEach((btn, index) => {
-    const pageNumber = index + 1;
+    if (!email || !password) {
+      authMessage.textContent = "Please enter email and password.";
+      return;
+    }
 
-    if (pageNumber <= totalPages) {
-      btn.style.display = "inline-block";
-      btn.textContent = pageNumber;
-      btn.classList.toggle("active", pageNumber === currentPage);
-    } else {
-      btn.style.display = "none";
+    try {
+      const response = await fetch(LOGIN_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        authMessage.textContent = result.error || "Login failed.";
+        return;
+      }
+
+      authMessage.textContent = result.message || "Login success.";
+      showLoggedInState(result.name || email);
+    } catch (error) {
+      console.error("Login error:", error);
+      authMessage.textContent = "Login request failed.";
     }
   });
 
-  prevPageBtn.disabled = currentPage === 1;
-  nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
-}
+  googleLoginBtnModal.addEventListener("click", () => {
+    authMessage.textContent = "Google login demo successful.";
+    showLoggedInState("Google User");
+  });
 
-function goToPage(page) {
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
+  githubLoginBtnModal.addEventListener("click", () => {
+    authMessage.textContent = "GitHub login demo successful.";
+    showLoggedInState("GitHub User");
+  });
 
-  if (page >= 1 && page <= totalPages) {
-    currentPage = page;
-    renderTable(filteredData);
-    updatePaginationButtons();
-  }
-}
+  logoutBtn.addEventListener("click", () => {
+    clearAuthForm();
+    showLoggedOutState();
+  });
 
-function nextPage() {
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
+  dietFilter.addEventListener("change", () => {
+    currentDiet = dietFilter.value;
+    currentPage = 1;
+    loadRecipes();
+  });
 
-  if (currentPage < totalPages) {
-    currentPage++;
-    renderTable(filteredData);
-    updatePaginationButtons();
-  }
-}
+  searchInput.addEventListener("input", () => {
+    currentSearch = searchInput.value.trim();
+    currentPage = 1;
+    loadRecipes();
+  });
 
-function prevPage() {
-  if (currentPage > 1) {
-    currentPage--;
-    renderTable(filteredData);
-    updatePaginationButtons();
-  }
-}
+  getInsightsBtn.addEventListener("click", () => {
+    loadRecipes();
+    loadCharts();
+  });
 
-getInsightsBtn.addEventListener("click", fetchInsights);
+  getRecipesBtn.addEventListener("click", () => {
+    loadRecipes();
+  });
 
-getRecipesBtn.addEventListener("click", () => {
-  statusText.textContent =
-    "Recipes feature can reuse the same dataset or be extended later.";
-});
+  getClustersBtn.addEventListener("click", () => {
+    statusText.textContent = "Clusters not implemented";
+  });
 
-getClustersBtn.addEventListener("click", () => {
-  statusText.textContent =
-    "Clusters feature placeholder added for UI match.";
-});
+  pageBtns.forEach((btn, index) => {
+    btn.addEventListener("click", () => {
+      currentPage = index + 1;
+      loadRecipes();
+    });
+  });
 
-dietFilter.addEventListener("change", applyFilters);
-searchInput.addEventListener("input", applyFilters);
+  prevBtn.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      loadRecipes();
+    }
+  });
 
-prevPageBtn.addEventListener("click", prevPage);
-nextPageBtn.addEventListener("click", nextPage);
+  nextBtn.addEventListener("click", () => {
+    if (currentPage < totalPages) {
+      currentPage++;
+      loadRecipes();
+    }
+  });
 
-pageButtons.forEach((btn, index) => {
-  btn.addEventListener("click", () => goToPage(index + 1));
+  populateDietOptions();
+  showLoggedOutState();
+  loadRecipes();
+  loadCharts();
 });
